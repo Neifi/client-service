@@ -1,4 +1,4 @@
-package es.neifi.clientservice.client.dto;
+package es.neifi.clientservice.client.model.dto;
 
 import lombok.Getter;
 import lombok.Setter;

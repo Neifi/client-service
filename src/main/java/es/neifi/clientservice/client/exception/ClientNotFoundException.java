@@ -12,6 +12,10 @@ public class ClientNotFoundException extends RuntimeException{
 	
 	public ClientNotFoundException(UUID id) {
 		super("No se ha encontrado al cliente con la id "+id);
+
+	}
+	public ClientNotFoundException(String message,UUID id) {
+		super(message+" id: "+id);
 	}
 	public ClientNotFoundException() {
 		super("No se ha encontrado al cliente");

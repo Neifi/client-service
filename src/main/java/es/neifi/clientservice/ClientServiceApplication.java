@@ -1,8 +1,5 @@
 package es.neifi.clientservice;
 
-import es.neifi.clientservice.client.controller.ClientController;
-import es.neifi.clientservice.client.dto.ClientDtoConverter;
-import es.neifi.clientservice.client.service.ClientService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 //import org.springframework.cloud.es.neifi.clientservice.client.discovery.EnableDiscoveryClient;

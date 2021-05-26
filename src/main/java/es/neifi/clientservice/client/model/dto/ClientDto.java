@@ -1,18 +1,19 @@
-package es.neifi.clientservice.client.dto;
+package es.neifi.clientservice.client.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonView;
-import es.neifi.clientservice.client.dto.views.ClientView;
-import es.neifi.clientservice.client.model.PostalAddress;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import es.neifi.clientservice.client.model.dto.views.ClientView;
+import lombok.*;
+
+import java.util.UUID;
 
 
 @AllArgsConstructor @NoArgsConstructor
 @Setter @Getter
+@Builder
 public class ClientDto {
 
+	@JsonView(ClientView.Dto.class)
+	private UUID clientID;
 	@JsonView(ClientView.Dto.class)
 	private String legalID;
 	@JsonView(ClientView.Dto.class)
@@ -23,8 +24,6 @@ public class ClientDto {
 	private String dateOfBirth;
 	@JsonView(ClientView.Dto.class)
 	private String email;
-	@JsonView(ClientView.Dto.class)
-	private String password;
 	@JsonView(ClientView.Dto.class)
 	private String avatar;
 	@JsonView(ClientView.Dto.class)

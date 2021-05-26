@@ -1,43 +1,30 @@
 package es.neifi.clientservice.client.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import es.neifi.clientservice.client.exception.ClientAccessKeyException;
+import es.neifi.clientservice.client.persistence.entity.ClientEntity;
+import es.neifi.clientservice.client.model.PaymentApproval;
+import es.neifi.clientservice.client.model.dto.*;
+import org.apache.http.HttpResponse;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
+import java.util.UUID;
 
+public interface BaseService {
+    ClientEntity registerClient(ClientDto cliente);
 
-public abstract class BaseService<T, ID, R extends JpaRepository<T, ID>> {
+    Page<ClientEntity> findByLegalId(String legal_id, Pageable pageable);
 
-	@Autowired
-	protected R repositorio;
-	
-	public T save(T t) {
+    Page<ClientEntity> findByArgs(Optional<String> name, Optional<String> surnames,
+                                  Optional<String> legal_id, Optional<String> email,
+                                  Pageable pageable);
 
-		return repositorio.save(t);
-		
-	}
-	
-	public Optional<T> findById(ID id) {
-		return repositorio.findById(id);
-	}
-	
-	public Page<T> findAll(Pageable pageable) {
-		return repositorio.findAll(pageable);
-	}
-	
-	public T update(T t) {
-		return repositorio.save(t);
-	}
-	
-	public void delete(T t) {
-		repositorio.delete(t);
-	}
-	
-	public void deleteById(ID id) {
-		repositorio.deleteById(id);
-	}
+    ClientEntity activateClientAccount(HttpResponse response);
 
+    @RabbitListener(queues = "")
+    ClientEntity updateAccessKey(PaymentApproval paymentApproval) throws ClientAccessKeyException;
 
+    ClientEntity unsubscribe(UUID clientID);
 }

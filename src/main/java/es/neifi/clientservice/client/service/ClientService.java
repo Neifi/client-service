@@ -1,12 +1,21 @@
 package es.neifi.clientservice.client.service;
 
 
-import es.neifi.clientservice.client.dto.ClientDto;
-import es.neifi.clientservice.client.dto.ClientDtoConverter;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.neifi.clientservice.client.model.Client;
-import es.neifi.clientservice.client.repo.ClientRepository;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import es.neifi.clientservice.client.model.dto.ClientDto;
+import es.neifi.clientservice.client.model.dto.DtoConverter;
+import es.neifi.clientservice.client.exception.ClientAccessKeyException;
+import es.neifi.clientservice.client.exception.ClientNotFoundException;
+import es.neifi.clientservice.client.persistence.entity.Client;
+import es.neifi.clientservice.client.model.MailServiceResponse;
+import es.neifi.clientservice.client.model.PaymentApproval;
+import es.neifi.clientservice.client.persistence.repository.ClientJpaRepository;
+import es.neifi.clientservice.client.persistence.repository.ClientRepository;
+import org.apache.http.HttpResponse;
+import org.apache.http.util.EntityUtils;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -16,141 +25,117 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
-import java.util.List;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
-public class ClientService extends BaseService<Client, UUID, ClientRepository> {
+public class ClientService  {
 
 	@Autowired
 	private final ClientRepository clientRepository;
-	@Autowired
-	private final ClientDtoConverter clientDtoConverter;
 
 
-	public Page<Client> searchClientByEmail(String email, Pageable pageable) {
-		return this.clientRepository.findByEmailContainsIgnoreCase(email, pageable);
+	public ClientService(ClientRepository clientRepository) {
+		this.clientRepository = clientRepository;
 	}
 
-//	TODO public List<Cliente> searchByCriteria(String criteria){
-//		
-//		List<Cliente> clients = findAll();
-//		
-//
-//		List <Cliente> findedClients = clients.parallelStream().filter(c -> c.getNombre().equals(criteria)
-//				|| c.getNombre().contains(criteria)
-//				|| c.getCalle().contains(criteria)
-//				|| c.getCiudad().contains(criteria)
-//				|| c.getFecha_nacimiento().contains(criteria)
-//				|| c.getApellidos().contains(criteria)
-//				|| c.getDni().contains(criteria)
-//				|| c.getEmail().contains(criteria)).collect(toList());
-//		
-//		
-//		return findedClients;
-//	}
-
-	public Client registerClient(ClientDto cliente) {
-		Client clientToBeRegistered = clientDtoConverter.convertToEntity(cliente);
-		//int id_gimnasio = clientRepository.findIdGimnasioByIdUsuario(admin.getId());
-		//nuevo.setId_gimnasio(id_gimnasio);
-		try {
-			return save(clientToBeRegistered);
-		} catch (DataIntegrityViolationException e) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nombre de usuario existente");
-		}
+	public Client registerClient(Client client) {
+		return this.clientRepository.registerClient(client);
 	}
 
-	public Client updateClientById(ClientDto cliente, UUID id) {
-		Client nuevoCliente = clientDtoConverter.convertToEntity(cliente);
-		try {
-			findClientById(id);
-			return save(nuevoCliente);
-		} catch (DataIntegrityViolationException e) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nombre de usuario existente");
-		}
-	}
-
-	public void deleteClientById(UUID id) {
-		try {
-			findClientById(id);
-			deleteClientById(id);
-		} catch (Exception e) {
-			// TODO: handle exception
-		}
-	}
-
-	public Optional<Client> findClientById(UUID id) {
-
-		return findById(id);
-	}
 
 	public Page<Client> findByLegalId(String legal_id, Pageable pageable) {
-		return this.repositorio.findByLegalIDContainsIgnoreCase(legal_id, pageable);
+		return this.clientRepository.findByLegalIDContainsIgnoreCase(legal_id, pageable);
 	}
 
-	public Page<Client> findByArgs(
-			final Optional<String> name, final Optional<String> surnames,
-			final Optional<String> legal_id, final Optional<String> email,
-			Pageable pageable
-	){
-		Specification<Client> specClientName = new Specification<Client>() {
-			@Override
-			public Predicate toPredicate(Root<Client> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
-				if(name.isPresent()) {
-					return criteriaBuilder
-						.like(criteriaBuilder
-								.lower(root.get("name")), "%" + name.get() + "%");
-				}else {
-					return criteriaBuilder.isTrue(criteriaBuilder.literal(true));
-				}
-			}
-		};
-		Specification<Client> specClientSurname = new Specification<Client>() {
-			@Override
-			public Predicate toPredicate(Root<Client> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
-				if(surnames.isPresent()) {
-					return criteriaBuilder
-							.like(criteriaBuilder
-									.lower(root.get("surnames")), "%" + surnames.get() + "%");
-				}else {
-					return criteriaBuilder.isTrue(criteriaBuilder.literal(true));
-				}
-			}
-		};
-		Specification<Client> specClientLegalId = new Specification<Client>() {
-			@Override
-			public Predicate toPredicate(Root<Client> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
-				if(legal_id.isPresent()) {
-					return criteriaBuilder
-							.like(criteriaBuilder
-									.lower(root.get("legalID")), "%" + legal_id.get() + "%");
-				}else {
-					return criteriaBuilder.isTrue(criteriaBuilder.literal(true));
-				}
-			}
-		};
+	public Page<Client> findByArgs(final Optional<String> name, final Optional<String> surnames,
+										 final Optional<String> legal_id, final Optional<String> email,
+										 Pageable pageable){
+		ClientSearchSpecification clientSearchSpecification = new
+				ClientSearchSpecificationImpl(name,surnames,legal_id,email,pageable);
 
-		Specification<Client> specClientEmail = new Specification<Client>() {
-			@Override
-			public Predicate toPredicate(Root<Client> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
-				if(email.isPresent()) {
-					return criteriaBuilder
-							.like(criteriaBuilder
-									.lower(root.get("email")), "%" + email.get() + "%");
-				}else {
-					return criteriaBuilder.isTrue(criteriaBuilder.literal(true));
-				}
-			}
-		};
+		Specification<Client> all = clientSearchSpecification
+				.getSpecClientName()
+				.and(clientSearchSpecification.getSpecClientSurname())
+				.or(clientSearchSpecification.getSpecClientEmail())
+				.or(clientSearchSpecification.getSpecClientLegalId());
 
-		Specification<Client> all = specClientName.and(specClientSurname).or(specClientEmail).or(specClientLegalId);
-		return this.repositorio.findAll(all,pageable);
+		return this.clientRepository.getClients(all,pageable);
+	}
+
+
+	public Client activateClientAccount(HttpResponse response) {
+		StringBuilder jsonClient = new StringBuilder();
+		ObjectMapper mapper = new ObjectMapper();
+
+		try {
+			jsonClient.append(EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8));
+			MailServiceResponse mailServiceResponse = mapToMailServiceResponse(jsonClient, mapper);
+
+			Client clientToActivate = getClientToActivate(mailServiceResponse.getClient_id());
+
+			clientToActivate.setActivated(true);
+			return clientToActivate;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private Client getClientToActivate(UUID uuid) {
+		return this.clientRepository.findById(uuid)
+				.orElseThrow(
+						() -> new ClientNotFoundException(
+								"Client not found during the account activation"
+								, uuid));
+	}
+
+
+	private MailServiceResponse mapToMailServiceResponse(StringBuilder jsonClient, ObjectMapper mapper) throws JsonProcessingException {
+		Map<String,Object> mapRes = mapper.readValue(jsonClient.toString(),Map.class);
+		MailServiceResponse mailServiceResponse = new MailServiceResponse();
+		mailServiceResponse.setClient_id(UUID.fromString((String) mapRes.get("client_id")));
+		mailServiceResponse.setReason((String) mapRes.get("reason"));
+		mailServiceResponse.setActivated(((boolean)mapRes.get("isActivated")));
+		return mailServiceResponse;
+	}
+
+	@RabbitListener(queues="")
+	public Client updateAccessKey(PaymentApproval paymentApproval) throws ClientAccessKeyException {
+		Client clientToActivateKey = getClientToActivate(paymentApproval.getClientID());
+
+		if(paymentApproval.isClientIsUpToDate()){
+
+			if (clientToActivateKey.getClientAccessKey() == null) {
+				UUID clientAccessKey = generateAccessKey();
+				clientToActivateKey.setClientAccessKey(clientAccessKey);
+			}
+
+			return this.clientRepository.save(clientToActivateKey);
+		}else{
+			clientToActivateKey.setClientAccessKey(null);
+
+			return clientToActivateKey;
+		}
+	}
+
+
+	private UUID generateAccessKey() {
+
+		return UUID.randomUUID();
+	}
+
+
+	public Client unsubscribe(UUID clientID) {
+		Client clientToUnsubscribe = this.clientRepository
+				.findById(clientID).orElseThrow(ClientNotFoundException::new);
+
+		clientToUnsubscribe.setActivated(false);
+		clientToUnsubscribe.setClientAccessKey(null);
+		this.clientRepository.save(clientToUnsubscribe);
+		return clientToUnsubscribe;
 	}
 }

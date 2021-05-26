@@ -1,4 +1,4 @@
-package es.neifi.clientservice.client.dto.views;
+package es.neifi.clientservice.client.model.dto.views;
 
 public class ClientView {
 

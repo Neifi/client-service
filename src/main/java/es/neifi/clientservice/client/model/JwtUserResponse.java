@@ -1,6 +1,6 @@
 package es.neifi.clientservice.client.model;
 
-import es.neifi.clientservice.client.dto.ClientDto;
+import es.neifi.clientservice.client.model.dto.ClientDto;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

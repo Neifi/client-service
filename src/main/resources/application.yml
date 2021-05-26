@@ -1,22 +1,41 @@
+spring:
+  rabbitmq:
+    exchanges:
+      client-registration: amq.fanout
+    queue:
+      client-registration: client-registration
+    host: localhost
+    port: 15672
+    username: guest
+    password: guest
 server:
-  port: 8081
+  port: 9090
 spring:
   application:
   data:
     rest:
-      base-path: /api/v1
+      base-path: /api/v1/
   jackson:
     mapper:
       default-view-inclusion: true
 
+jpa:
+  show-sql: true
+  database: POSTGRESQL
+  database-platform: org.hibernate.dialect.PostgreSQL95Dialect
+  generate-ddl: false
+  hibernate:
+    ddl-auto: validate
+  properties:
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/client
-    username: postgres
-    password: admin
     jpa:
       show-sql: true
+      database: POSTGRESQL
+      generate-ddl: false
       properties:
         hibernate:
+          format_sql: true
           naming:
             implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
             physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
@@ -29,6 +48,7 @@ logging:
     org:
       springframework:
         web: DEBUG
+
 #eureka:
 #  instance:
  #   hostname: es.neifi.clientservice.client-service
