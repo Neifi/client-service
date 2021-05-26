@@ -62,7 +62,7 @@ public class ClientService  {
 				.and(clientSearchSpecification.getSpecClientSurname())
 				.or(clientSearchSpecification.getSpecClientEmail())
 				.or(clientSearchSpecification.getSpecClientLegalId());
-
+//tor
 		return this.clientRepository.getClients(all,pageable);
 	}
 
